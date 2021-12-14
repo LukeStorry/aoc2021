@@ -2,32 +2,21 @@ import re
 from collections import Counter
 
 
-data = open("inputs/14_test.txt").read().split('\n\n')
+data = open("inputs/14.txt").read().split('\n\n')
 polymer, insertion_rules = data[0], {(f1, f2): t for f1, f2, t in re.findall(r"(.)(.) -> (.)",  data[1])}
 
-
-class Node:
-    def __init__(self, char: str, next) -> None:
-        self.char = char
-        self.next = next
-
-    def step(self):
-        self.next = Node(insertion_rules[self.char, self.next.char], self.next)
-        return self.next
-
-    def __repr__(self) -> str:
-        return f"{self.char}"
-
-
-nodes = [Node(c, None) for c in polymer]
-for x, y in zip(nodes, nodes[1:]):
-    x.next = y
-
+char_count = Counter(polymer)
+pairs_count = Counter(zip(polymer, polymer[1:]))
 
 for i in range(40):
-    print(i)
-    nodes.extend([node.step() for node in nodes if node.next is not None])
+    for pair, count in list(pairs_count.items()):
+        new = insertion_rules[pair]
+        char_count[new] += count
+        pairs_count[pair[0], new] += count
+        pairs_count[new, pair[1]] += count
+        pairs_count[pair] -= count
 
+    if i == 9:
+        print(char_count.most_common()[0][1] - char_count.most_common()[-1][1])
 
-c = Counter(n.char for n in nodes).most_common()
-print(c[0][1] - c[-1][1])
+print(char_count.most_common()[0][1] - char_count.most_common()[-1][1])
