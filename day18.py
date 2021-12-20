@@ -1,63 +1,104 @@
 from __future__ import annotations
-from dataclasses import dataclass
-from re import findall
-from typing import Union
+from typing import Optional, Union
+from math import floor, ceil
 
 
-@dataclass
 class Pair:
-    left: Union[int, Pair]
-    right: Union[int, Pair]
-
     @staticmethod
-    def from_string(string: str, i=0) -> Pair:
+    def from_string(string: str, i=0, grand_parent=None) -> Pair:
         if (current_char := string[i]) == '[':
-            left, i = Pair.from_string(string, i+1)
-            right, i = Pair.from_string(string, i+1)
-
-            if i < len(string)-1:
-                return (Pair(left, right), i+1)
-            else:
-                return Pair(left, right)
+            parent = Pair(grand_parent, None, None)
+            parent.left, i = Pair.from_string(string, i+1, parent)
+            parent.right, i = Pair.from_string(string, i+1, parent)
+            return (parent, i+1) if i < len(string)-1 else parent
 
         elif current_char.isdigit():
             return int(current_char), i + 1
 
+    def __init__(self, parent: Optional[Pair], left: Union[int, Pair], right: Union[int, Pair]) -> None:
+        self.parent = parent
+        self.left = left
+        self.right = right
+
     def __add__(self, other) -> Pair:
-        return Pair(self, other).reduced()
+        new = Pair(None, self, other)
+        self.parent = new
+        other.parent = new
+        return new.reduced()
 
     def reduced(self) -> Pair:
-
+        while self.explode() or self.split():
+            pass
         return self
 
-    def explode(self, depth):
-        exploder = self.exploder()
-        if exploder is None:
-            return False
-        start = str()
-         # Attempt two, trying to get the string, replace the numbers, and return again.
+    def split(self):
+        if isinstance(self.left, int) and self.left >= 10:
+            self.left = Pair(self, floor(self.left/2), ceil(self.left/2))
+            return True
+        if isinstance(self.right, int) and self.right >= 10:
+            self.right = Pair(self, floor(self.right/2), ceil(self.right/2))
+            return True
 
+        return (isinstance(self.left, Pair) and self.left.split()) or (isinstance(self.right, Pair) and self.right.split())
 
-
-    def exploder(self, depth=1):
-        if depth == 3:
-
-            # if children, then explode them - but how to propogate values - try other child then call to parent, recursively!
-            return self
-
+    def explode(self, depth=0):
+        if depth == 4:
+            self.parent.explode_left(self.left, self)
+            self.parent.explode_right(self.right, self)
+            if self == self.parent.left:
+                self.parent.left = 0
+            else:
+                self.parent.right = 0
         return (isinstance(self.left, Pair) and self.left.explode(depth+1)) or (isinstance(self.right, Pair) and self.right.explode(depth+1))
 
-    def max_nested(self) -> int:
-        left = self.left.max_nested() + 1 if isinstance(self.left, Pair) else 0
-        right = self.right.max_nested() + 1 if isinstance(self.right, Pair) else 0
-        return max(left, right)
+    def explode_left(self, n, previous):
+        if previous == self.left:
+            if self.parent is not None:
+                self.parent.explode_left(n, self)
+        else:
+            self.add_left(n, go_right=True)
 
-    def __repr__(self) -> str:
-        return f"<{self.left}.{self.right}>"
+    def explode_right(self, n, previous):
+        if previous == self.right:
+            if self.parent is not None:
+                self.parent.explode_right(n, self)
+        else:
+            self.add_right(n, go_left=True)
+
+    def add_left(self, n, go_right=False):
+        if isinstance(self.left, Pair):
+            if go_right:
+                self.left.add_right(n)
+            else:
+                self.left.add_left(n)
+        else:
+            self.left += n
+
+    def add_right(self, n, go_left=False):
+        if isinstance(self.right, Pair):
+            if go_left:
+                self.right.add_left(n)
+            else:
+                self.right.add_right(n)
+        else:
+            self.right += n
+
+    def __str__(self) -> str:
+        return f"[{self.left},{self.right}]"
+
+    def magnitude(self) -> int:
+        mag_left = self.left.magnitude() if isinstance(self.left, Pair) else self.left
+        mag_right = self.right.magnitude() if isinstance(self.right, Pair) else self.right
+        return 3 * mag_left + 2*mag_right
 
 
-# Pair.from_string("[[[[1,3],[5,3]],[[1,3],[8,7]]],[[[4,9],[6,9]],[[8,2],[7,3]]]]")
-# Pair.from_string("[[[[1,2],[3,4]],[[5,6],[7,8]]],9]")
-# Pair.from_string("[[[[[9,8],1],2],3],4]").explode()
-# Pair.from_string("[[6,[5,[4,[3,2]]]],1]").explode()
-Pair.from_string("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]").explode()
+# pairs = list(map(Pair.from_string, open("inputs/18.txt").read().splitlines()))
+# result = sum(pairs[1:], start=pairs[0])
+# print(result)
+# print(result.magnitude())
+
+# All good for first 4 sums, then this? one fails.
+print(Pair.from_string("[[[[7,0],[7,7]],[[7,7],[7,8]]],[[[7,7],[8,8]],[[7,7],[8,7]]]]") +
+      Pair.from_string("[7,[5,[[3,8],[1,4]]]]"))
+# Should be:
+print("[[[[7,7],[7,8]],[[9,5],[8,7]]],[[[6,8],[0,8]],[[9,9],[9,0]]]]")
