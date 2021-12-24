@@ -49,6 +49,7 @@ class Pair:
                 self.parent.left = 0
             else:
                 self.parent.right = 0
+            return True
         return (isinstance(self.left, Pair) and self.left.explode(depth+1)) or (isinstance(self.right, Pair) and self.right.explode(depth+1))
 
     def explode_left(self, n, previous):
@@ -100,5 +101,6 @@ class Pair:
 # All good for first 4 sums, then this? one fails.
 print(Pair.from_string("[[[[7,0],[7,7]],[[7,7],[7,8]]],[[[7,7],[8,8]],[[7,7],[8,7]]]]") +
       Pair.from_string("[7,[5,[[3,8],[1,4]]]]"))
-# Should be:
+      
+# # Should be:
 print("[[[[7,7],[7,8]],[[9,5],[8,7]]],[[[6,8],[0,8]],[[9,9],[9,0]]]]")
